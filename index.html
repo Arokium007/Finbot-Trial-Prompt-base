@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0;
+        }
+        #chat-container { position: fixed; bottom: 0; right: 0; width: 400px; }
+        #chat-box {
+            display: none;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fff;
+            width: 100%;
+            height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+        #chat-header {
+            background: #013d7c;
+            color: #fff;
+            padding: 10px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            box-sizing: border-box;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        #chat-box .message-container {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+        }
+        #chat-box .message-container.user {
+            justify-content: flex-end;
+        }
+        #chat-box .logo {
+            width: 25px;
+            height: 25px;
+            background: #05274b; 
+            color: #fff;
+            border-radius: 20%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+        #chat-box .message { 
+            padding: 8px;
+            border-radius: 10px;
+            text-align: left;
+            flex-grow: 1;
+            font-size: 10px;
+            max-width: 70%;
+            font-weight:300;
+        }
+        #chat-box .message.bot { 
+            background: #f1f1f1; 
+        }
+        #chat-box .message.user { 
+            background: #013d7c; 
+            color: #ffffff; 
+            text-align: right; 
+            font-size: 10px;
+            padding: 5px;
+            margin-right: 15px;
+            max-width: 75%;
+            font-weight:400;
+        }
+        #chat-box button { 
+            display: block; 
+            border: none; 
+            background: #3a3a3a; 
+            color: #fff; 
+            padding: 6px 10px;
+            margin: 2%;
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 9px;
+            transition: background 0.3s, transform 0.3s;
+        }
+        #chat-box button:hover { 
+            background: #ec5f07; 
+            transform: scale(1.05); 
+        }
+        #chat-box button:active { 
+            background: #004494; 
+        }
+        #open-chat { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            padding: 10px 70px; 
+            border: none; 
+            border-radius: 20px; 
+            background: #05274b; 
+            color: #fff; 
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s, transform 0.3s;
+        }
+        #open-chat:hover { 
+            background: #ec5f07; 
+            transform: scale(1.05); 
+        }
+        #open-chat:active { 
+            background: #004494; 
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-box">
+            <div id="chat-header">Finbot</div>
+        </div>
+        <button id="open-chat">Open Chat</button>
+    </div>
+
+    <script>
+        document.getElementById('open-chat').onclick = function() {
+            document.getElementById('chat-box').style.display = 'block';
+            this.style.display = 'none';
+            sendMessage('greeting');
+        };
+
+        function sendMessage(input) {
+            if (input !== 'greeting') {
+                displayMessage(input, 'user');
+            }
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input: input })
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearOptions();
+                if (data.url) {
+                    window.open(data.url, '_blank'); // Open the URL in a new tab
+                    if (data.options) {
+                        displayOptions(data.options); // Display new options after redirect
+                    }
+                } else {
+                    displayMessage(data.text, 'bot');
+                    displayOptions(data.options);
+                }
+            });
+        }
+
+        function displayMessage(text, sender) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = `message-container ${sender}`;
+            
+            if (sender === 'bot') {
+                const logoDiv = document.createElement('div');
+                logoDiv.className = 'logo';
+                logoDiv.innerText = 'FC';
+                messageContainer.appendChild(logoDiv);
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.innerText = text;
+            messageContainer.appendChild(messageDiv);
+
+            const chatBox = document.getElementById('chat-box');
+            chatBox.appendChild(messageContainer);
+            
+            // Ensure the scroll happens after the DOM has updated
+            requestAnimationFrame(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        function displayOptions(options) {
+            const chatBox = document.getElementById('chat-box');
+            Object.keys(options).forEach(key => {
+                const button = document.createElement('button');
+                button.innerText = options[key];
+                button.onclick = function() {
+                    sendMessage(key);
+                };
+                chatBox.appendChild(button);
+            });
+        }
+
+        function clearOptions() {
+            const chatBox = document.getElementById('chat-box');
+            const buttons = chatBox.querySelectorAll('button');
+            buttons.forEach(button => button.remove());
+        }
+    </script>
+</body>
+</html>
